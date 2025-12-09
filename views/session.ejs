@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Session <%= sessionId %> — Guessing Game</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Game Session: <span id="sessionDisplay"><%= sessionId %></span></h1>
+      <div class="meta">You: <strong id="youName"><%= name %></strong> — <span id="roleLabel">Connecting...</span></div>
+    </header>
+
+    <main class="grid">
+      <section class="chat card" id="chat">
+        <div id="messages" class="messages"></div>
+
+        <!-- Game controls (shown during game) -->
+        <div id="gameControls" class="controls guess-controls hidden">
+          <div class="guess-info">
+            <p id="questionDisplay"></p>
+            <p id="attemptsDisplay">Attempts left: 3</p>
+            <p id="timerDisplay">Time left: 60s</p>
+          </div>
+          
+          <form id="guessForm" class="inline-form">
+            <input id="guessInput" placeholder="Enter your guess" autocomplete="off" />
+            <button id="guessBtn" type="submit">Guess</button>
+          </form>
+        </div>
+
+        <!-- Master spectator mode during game -->
+        <div id="masterSpectator" class="controls master-spectator hidden">
+          <div class="spectator-info">
+            <h4>👑 Master Mode - Spectating</h4>
+            <p id="masterQuestionDisplay"></p>
+            <p id="masterTimerDisplay">Time left: 60s</p>
+            <p class="spectator-note">You set the question, so you can't participate in guessing. Watch your players compete!</p>
+          </div>
+        </div>
+
+        <!-- Chat -->
+        <div class="chat-input">
+          <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
+          <button id="sendMessage" class="btn btn-secondary">Send</button>
+        </div>
+      </section>
+
+      <aside class="card players" id="playersCard">
+        <h3>Players (<span id="playerCount">0</span>)</h3>
+        <ul id="playersList"></ul>
+        
+        <!-- Scoreboard -->
+        <div id="scoreboard" style="margin-top: 16px;">
+          <h4>Scoreboard</h4>
+          <ul id="scoreList"></ul>
+        </div>
+
+        <!-- Master controls -->
+        <div id="masterControls" style="margin-top:12px; display:none;">
+          <h4>Master Controls</h4>
+          <form id="questionForm">
+            <input id="questionInput" placeholder="Question" required />
+            <input id="answerInput" placeholder="Answer" required />
+            <button type="submit">Set Question</button>
+          </form>
+          <div style="margin-top:8px;">
+            <label>Time (seconds) <input id="timeInput" type="number" min="10" value="60" style="width:80px" /></label>
+            <button id="startBtn">Start Game</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="muted">
+      <button id="leaveBtn">Leave Session</button>
+    </footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    (function () {
+      const socket = io();
+
+      const sessionId = "<%= sessionId %>";
+      const name = "<%= name %>";
+
+      // UI References
+      const sessionDisplay = document.getElementById('sessionDisplay');
+      const youName = document.getElementById('youName');
+      const roleLabel = document.getElementById('roleLabel');
+      const playersList = document.getElementById('playersList');
+      const playerCount = document.getElementById('playerCount');
+      const scoreList = document.getElementById('scoreList');
+      const messages = document.getElementById('messages');
+      const masterControls = document.getElementById('masterControls');
+      const gameControls = document.getElementById('gameControls');
+      const masterSpectator = document.getElementById('masterSpectator');
+      
+      const sendMessageBtn = document.getElementById('sendMessage');
+      const chatInput = document.getElementById('chatInput');
+      
+      const questionForm = document.getElementById('questionForm');
+      const questionInput = document.getElementById('questionInput');
+      const answerInput = document.getElementById('answerInput');
+      const startBtn = document.getElementById('startBtn');
+      
+      const guessForm = document.getElementById('guessForm');
+      const guessInput = document.getElementById('guessInput');
+      const guessBtn = document.getElementById('guessBtn');
+      const timeInput = document.getElementById('timeInput');
+      const leaveBtn = document.getElementById('leaveBtn');
+      
+      const questionDisplay = document.getElementById('questionDisplay');
+      const attemptsDisplay = document.getElementById('attemptsDisplay');
+      const timerDisplay = document.getElementById('timerDisplay');
+      const masterQuestionDisplay = document.getElementById('masterQuestionDisplay');
+      const masterTimerDisplay = document.getElementById('masterTimerDisplay');
+
+      let currentSessionId = sessionId;
+      let isGameMaster = false;
+      let mySocketId = null;
+
+      // Utility: Add message to chat
+      function addMessage(text, cls = 'system', playerName = '') {
+        const div = document.createElement('div');
+        div.className = `msg ${cls}`;
+
+        if (playerName) {
+          div.innerHTML = `
+            <div class="msg-header">${playerName}</div>
+            <div>${text}</div>
+          `;
+        } else {
+          div.textContent = text;
+        }
+
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      // Update players list
+      function updatePlayersList(players) {
+        playersList.innerHTML = '';
+        players.forEach(p => {
+          const li = document.createElement('li');
+          const isMaster = p.isGameMaster ? ' 👑 (Master)' : '';
+          const isYou = p.id === socket.id ? ' (You)' : '';
+          li.textContent = `${p.name}${isMaster}${isYou} - Attempts: ${p.attemptsLeft}`;
+          playersList.appendChild(li);
+        });
+      }
+
+      // Update scoreboard
+      function updateScoreboard(players) {
+        const sorted = [...players].sort((a, b) => b.score - a.score);
+        scoreList.innerHTML = '';
+        sorted.forEach((p, idx) => {
+          const li = document.createElement('li');
+          const medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : '';
+          li.textContent = `${medal}${p.name}: ${p.score} pts`;
+          scoreList.appendChild(li);
+        });
+      }
+
+      // Update game controls based on state
+      function updateGameControls(gameState, isMaster) {
+        if (gameState === 'in-progress') {
+          // Master should NOT see guessing controls
+          if (isMaster) {
+            gameControls.classList.add('hidden');
+            masterControls.style.display = 'none';
+          } else {
+            gameControls.classList.remove('hidden');
+            guessInput.disabled = false;
+          }
+        } else if (gameState === 'waiting') {
+          gameControls.classList.add('hidden');
+          guessInput.disabled = true;
+          
+          if (isMaster) {
+            masterControls.style.display = 'block';
+          }
+        } else if (gameState === 'ended') {
+          gameControls.classList.add('hidden');
+          guessInput.disabled = true;
+        }
+      }
+
+      // ===== SOCKET EVENT HANDLERS =====
+
+      // Join session
+      socket.emit('join_session', { sessionId, name }, (resp) => {
+        if (resp && resp.error) {
+          alert(resp.error);
+          addMessage('Error: ' + resp.error, 'error');
+          roleLabel.textContent = 'Unable to join';
+          return;
+        }
+
+        mySocketId = socket.id;
+        isGameMaster = resp.role === 'master';
+        roleLabel.textContent = isGameMaster ? 'Master' : 'Player';
+        youName.textContent = name + (isGameMaster ? ' 👑' : '');
+
+        if (isGameMaster) {
+          masterControls.style.display = 'block';
+        }
+
+        addMessage('You joined the session as ' + (isGameMaster ? 'Master' : 'Player'));
+      });
+
+      // GAME STATE - Main synchronization event
+      socket.on('game-state', (data) => {
+        console.log('Received game state:', data);
+        
+        sessionDisplay.textContent = data.sessionId;
+        currentSessionId = data.sessionId;
+        playerCount.textContent = data.players.length;
+        
+        updatePlayersList(data.players);
+        updateScoreboard(data.players);
+        
+        const currentPlayer = data.players.find(p => p.id === socket.id);
+        isGameMaster = currentPlayer ? currentPlayer.isGameMaster : false;
+        
+        updateGameControls(data.gameState, isGameMaster);
+        
+        // Update attempts display and disable guess button if no attempts left
+        if (currentPlayer) {
+          attemptsDisplay.textContent = `Attempts left: ${currentPlayer.attemptsLeft}`;
+          
+          // Disable guessing if no attempts left
+          if (currentPlayer.attemptsLeft <= 0) {
+            guessInput.disabled = true;
+            guessBtn.disabled = true;
+            guessInput.placeholder = "No attempts remaining";
+          } else if (data.gameState === 'in-progress' && !isGameMaster) {
+            guessInput.disabled = false;
+            guessBtn.disabled = false;
+            guessInput.placeholder = "Enter your guess";
+          }
+        }
+      });
+
+      // Chat message received
+      socket.on('chat-message', ({ name, message }) => {
+        addMessage(message, 'chat', name);
+      });
+
+      // Player joined
+      socket.on('player_joined', ({ name }) => {
+        addMessage(`${name} joined the session`, 'system');
+      });
+
+      // Player left
+      socket.on('player_left', () => {
+        addMessage('A player left the session', 'system');
+      });
+
+      // Question created
+      socket.on('question_created', ({ question, masterName }) => {
+        addMessage(`Master ${masterName} set the question: "${question}"`, 'system');
+      });
+
+      // Game started
+      socket.on('game_started', ({ timeLeft, question }) => {
+        addMessage(`🎮 Game started! Time: ${timeLeft}s`, 'system');
+        questionDisplay.textContent = `Question: ${question}`;
+        timerDisplay.textContent = `Time left: ${timeLeft}s`;
+        
+        // Master spectator mode
+        if (isGameMaster) {
+          masterQuestionDisplay.textContent = `Your Question: ${question}`;
+          masterTimerDisplay.textContent = `Time left: ${timeLeft}s`;
+          masterSpectator.classList.remove('hidden');
+        } else {
+          // Only show controls for non-masters
+          gameControls.classList.remove('hidden');
+          guessInput.disabled = false;
+        }
+      });
+
+      // Timer tick
+      socket.on('tick', ({ timeLeft }) => {
+        timerDisplay.textContent = `Time left: ${timeLeft}s`;
+        masterTimerDisplay.textContent = `Time left: ${timeLeft}s`;
+      });
+
+      // Player attempted
+      socket.on('player_attempted', ({ name, attemptsLeft }) => {
+        addMessage(`${name} made a guess. Attempts left: ${attemptsLeft}`, 'system');
+      });
+
+      // Guess result (for current player only)
+      socket.on('guess_result', ({ correct, attemptsLeft }) => {
+        if (correct) {
+          addMessage('✅ Correct! You won!', 'success');
+        } else {
+          addMessage(`❌ Wrong guess. Attempts left: ${attemptsLeft}`, 'error');
+        }
+        attemptsDisplay.textContent = `Attempts left: ${attemptsLeft}`;
+        
+        // Disable guessing if no attempts left
+        if (attemptsLeft <= 0) {
+          guessInput.disabled = true;
+          guessBtn.disabled = true;
+          guessInput.placeholder = "No attempts remaining";
+          guessInput.value = '';
+          addMessage('⛔ You have used all your attempts. Wait for the round to end.', 'error');
+        }
+      });
+
+      // Round ended
+      socket.on('round_ended', ({ winner, answer, message }) => {
+        if (winner) {
+          addMessage(`🏆 ${message} Answer was: "${answer}"`, 'system');
+        } else {
+          addMessage(`⏱️ ${message} Answer was: "${answer}"`, 'system');
+        }
+        
+        // Reset guess controls for next round
+        guessInput.disabled = true;
+        guessBtn.disabled = true;
+        guessInput.placeholder = "Enter your guess";
+        guessInput.value = '';
+        gameControls.classList.add('hidden');
+        masterSpectator.classList.add('hidden');
+      });
+
+      // New master
+      socket.on('new_master', ({ masterName }) => {
+        addMessage(`👑 New master: ${masterName}`, 'system');
+        
+        // Update UI if you became master
+        if (socket.id === masterName) {
+          isGameMaster = true;
+          masterControls.style.display = 'block';
+        }
+      });
+
+      // ===== USER INTERACTIONS =====
+
+      // Send chat message
+      sendMessageBtn.addEventListener('click', sendChatMessage);
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+      });
+
+      function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        socket.emit('chat-message', message);
+        chatInput.value = '';
+      }
+
+      // Master: Create question
+      questionForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const q = questionInput.value.trim();
+        const a = answerInput.value.trim();
+
+        if (!q || !a) return alert('Question and answer required');
+
+        socket.emit('create_question', { sessionId, question: q, answer: a }, (r) => {
+          if (r && r.error) return alert(r.error);
+
+          addMessage('✅ Question saved successfully', 'success');
+          questionInput.value = '';
+          answerInput.value = '';
+        });
+      });
+
+      // Master: Start game
+      startBtn.addEventListener('click', () => {
+        const t = parseInt(timeInput.value, 10) || 60;
+
+        socket.emit('start_game', { sessionId, timeLimit: t }, (r) => {
+          if (r && r.error) alert(r.error);
+        });
+      });
+
+      // Player: Submit guess
+      guessForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const g = guessInput.value.trim();
+        if (!g) return;
+
+        // Double-check button isn't disabled
+        if (guessBtn.disabled) {
+          return;
+        }
+
+        socket.emit('submit_guess', { sessionId, guess: g }, (r) => {
+          if (r && r.error) return addMessage('Error: ' + r.error, 'error');
+          guessInput.value = '';
+        });
+      });
+
+      // Leave session
+      leaveBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to leave?')) {
+          socket.emit('leave_session', { sessionId }, () => {
+            window.location = '/';
+          });
+        }
+      });
+
+      // Initial state
+      guessInput.disabled = true;
+
+    })();
+  </script>
+</body>
+</html>

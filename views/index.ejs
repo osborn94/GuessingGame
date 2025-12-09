@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Guessing Game — Sessions</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <h1>🎮 Multiplayer Guessing Game</h1>
+      <p class="subtitle">Create or join a game session to play with friends!</p>
+    </header>
+
+    <section class="card">
+      <h3>Create a New Session</h3>
+      <form method="post" action="/create" class="inline-form">
+        <input name="name" placeholder="Your display name" required maxlength="30" />
+        <button type="submit" class="btn-primary">Create Session</button>
+      </form>
+      <div style="margin-top: 12px;">
+        <button class="join-btn" onclick="openJoin()">Join Existing Session</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Active Sessions</h3>
+      <% if (sessions.length === 0) { %>
+        <div class="empty-state">
+          <p>🎯 No active sessions yet.</p>
+          <p class="muted">Create one above to get started!</p>
+        </div>
+      <% } else { %>
+        <ul class="sessions-list">
+          <% sessions.forEach(s => { %>
+            <li>
+              <div class="session-info">
+                <div class="session-id">
+                  <strong><%= s.id %></strong>
+                  <span class="status-badge status-<%= s.status %>"><%= s.status %></span>
+                </div>
+                <div class="session-meta">
+                  👑 Master: <%= s.masterName %> | 
+                  👥 <%= s.playersCount %> <%= s.playersCount === 1 ? 'player' : 'players' %>
+                </div>
+              </div>
+              <button class="join-btn" onclick="openJoin('<%= s.id %>')">Join</button>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+
+    <!-- JOIN POPUP -->
+    <div id="joinBox" class="join-box hidden">
+      <div class="join-content">
+        <h3>Join Session</h3>
+        
+        <label for="joinName">Your Name:</label>
+        <input type="text" id="joinName" placeholder="Enter your name" maxlength="30" required />
+
+        <label for="joinSessionId">Session ID:</label>
+        <input type="text" id="joinSessionId" placeholder="Enter session ID" maxlength="8" required />
+
+        <div class="button-group">
+          <button id="joinSubmit" class="btn-primary">Join Game</button>
+          <button id="joinCancel" class="btn-secondary">Cancel</button>
+        </div>
+
+        <div id="joinError" class="error-message hidden"></div>
+      </div>
+    </div>
+
+    <footer class="muted">
+      <p>💡 <strong>How to play:</strong> The master creates a question, players guess the answer. First correct guess wins!</p>
+      <small>This game uses in-memory sessions. Refreshing server clears all sessions.</small>
+    </footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Listen for session updates
+    socket.on('sessions-list-update', (sessions) => {
+      updateSessionsList(sessions);
+    });
+
+    function updateSessionsList(sessions) {
+      const listContainer = document.querySelector('.sessions-list')?.parentElement;
+      if (!listContainer) return;
+
+      if (sessions.length === 0) {
+        listContainer.innerHTML = `
+          <div class="empty-state">
+            <p>🎯 No active sessions yet.</p>
+            <p class="muted">Create one above to get started!</p>
+          </div>
+        `;
+      } else {
+        listContainer.innerHTML = `
+          <ul class="sessions-list">
+            ${sessions.map(s => `
+              <li>
+                <div class="session-info">
+                  <div class="session-id">
+                    <strong>${s.id}</strong>
+                    <span class="status-badge status-${s.status}">${s.status}</span>
+                  </div>
+                  <div class="session-meta">
+                    👑 Master: ${s.masterName} | 
+                    👥 ${s.playersCount} ${s.playersCount === 1 ? 'player' : 'players'}
+                  </div>
+                </div>
+                <button class="join-btn" onclick="openJoin('${s.id}')">Join</button>
+              </li>
+            `).join('')}
+          </ul>
+        `;
+      }
+    }
+
+    function openJoin(sessionId = '') {
+      document.getElementById('joinBox').classList.remove('hidden');
+      document.getElementById('joinSessionId').value = sessionId;
+      document.getElementById('joinError').classList.add('hidden');
+      
+      // Focus on name input
+      document.getElementById('joinName').focus();
+    }
+
+    function closeJoin() {
+      document.getElementById('joinBox').classList.add('hidden');
+      document.getElementById('joinName').value = '';
+      document.getElementById('joinSessionId').value = '';
+      document.getElementById('joinError').classList.add('hidden');
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('joinError');
+      errorDiv.textContent = message;
+      errorDiv.classList.remove('hidden');
+    }
+
+    // Cancel button
+    document.getElementById('joinCancel').addEventListener('click', closeJoin);
+
+    // Close on background click
+    document.getElementById('joinBox').addEventListener('click', (e) => {
+      if (e.target.id === 'joinBox') {
+        closeJoin();
+      }
+    });
+
+    // Submit join
+    document.getElementById('joinSubmit').addEventListener('click', async () => {
+      const name = document.getElementById('joinName').value.trim();
+      const sessionId = document.getElementById('joinSessionId').value.trim();
+
+      if (!name) {
+        showError('Please enter your name');
+        return;
+      }
+
+      if (!sessionId) {
+        showError('Please enter a session ID');
+        return;
+      }
+
+      // Check if session exists
+      try {
+        const res = await fetch(`/api/check-session/${sessionId}`);
+        const data = await res.json();
+
+        if (!data.exists) {
+          showError('❌ Session ID not found. Please check and try again.');
+          return;
+        }
+
+        // Session exists, redirect
+        window.location.href = `/session/${sessionId}?name=${encodeURIComponent(name)}`;
+      } catch (error) {
+        showError('⚠️ Error checking session. Please try again.');
+        console.error('Error:', error);
+      }
+    });
+
+    // Allow Enter key to submit
+    document.getElementById('joinName').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('joinSessionId').focus();
+      }
+    });
+
+    document.getElementById('joinSessionId').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('joinSubmit').click();
+      }
+    });
+
+    // Optional: Uncomment to enable auto-refresh (not recommended while typing)
+    // setInterval(() => {
+    //   if (document.getElementById('joinBox').classList.contains('hidden')) {
+    //     location.reload();
+    //   }
+    // }, 10000);
+  </script>
+</body>
+</html>

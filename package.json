@@ -1,0 +1,27 @@
+{
+  "name": "guessinggame",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osborn94/GuessingGame.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/osborn94/GuessingGame/issues"
+  },
+  "homepage": "https://github.com/osborn94/GuessingGame#readme",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
+  }
+}

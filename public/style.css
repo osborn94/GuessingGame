@@ -1,0 +1,546 @@
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+.card {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 6px 14px rgba(15, 15, 15, 0.06);
+    margin-bottom: 16px;
+}
+
+.hidden {
+  display: none;
+}
+
+.inline-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.inline-form input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+.inline-form button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.inline-form button:hover {
+    background: #2563eb;
+}
+
+.inline-form button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.inline-form input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chat {
+  height: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.messages {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+  background: #fcfcfd;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msg {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border-left: 3px solid #e2e8f0;
+}
+
+.msg.system {
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+  color: #1e40af;
+}
+
+.msg.error {
+  color: #b91c1c;
+  background: #fff1f2;
+  border-left-color: #ef4444;
+}
+
+.msg.success {
+  color: #15803d;
+  background: #f0fdf4;
+  border-left-color: #22c55e;
+}
+
+.msg.chat {
+  background: white;
+  border-left-color: #8b5cf6;
+}
+
+.msg-header {
+  font-size: 12px;
+  font-weight: bold;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-secondary {
+  background: #64748b;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #475569;
+}
+
+.players ul {
+  padding-left: 12px;
+  list-style: none;
+}
+
+.players ul li {
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+#scoreboard {
+  border-top: 2px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+#scoreList {
+  list-style: none;
+  padding-left: 0;
+}
+
+#scoreList li {
+  padding: 6px 0;
+  font-weight: 500;
+}
+
+header {
+  margin-bottom: 16px;
+}
+
+header h1 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+}
+
+.meta {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.controls {
+  margin-top: 12px;
+}
+
+.guess-controls {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.guess-info {
+  margin-bottom: 12px;
+}
+
+.guess-info p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #334155;
+}
+
+#questionDisplay {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.master-spectator {
+  background: #fef3c7;
+  padding: 16px;
+  border-radius: 6px;
+  border: 2px solid #fbbf24;
+}
+
+.spectator-info h4 {
+  margin: 0 0 12px 0;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spectator-info p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #78350f;
+}
+
+.spectator-note {
+  margin-top: 12px;
+  padding: 10px;
+  background: #fffbeb;
+  border-radius: 4px;
+  font-size: 13px;
+  font-style: italic;
+  color: #92400e;
+}
+
+#masterQuestionDisplay {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+#masterControls form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#masterControls input {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+#masterControls button {
+  padding: 8px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#masterControls button:hover {
+  background: #2563eb;
+}
+
+#startBtn {
+  width: 100%;
+  margin-top: 8px;
+  background: #10b981;
+}
+
+#startBtn:hover {
+  background: #059669;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 13px;
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  cursor: pointer;
+}
+
+#leaveBtn {
+  padding: 8px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+
+#leaveBtn:hover {
+  background: #dc2626;
+}
+
+.join-box {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.join-box.hidden {
+  display: none;
+}
+
+.join-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 10px;
+  width: 320px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.join-content h3 {
+  margin-top: 0;
+  color: #1e293b;
+}
+
+.join-content label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.join-content input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.join-content button {
+  margin-top: 16px;
+  width: 48%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#joinSubmit {
+  background: #3b82f6;
+  color: white;
+  margin-right: 4%;
+}
+
+#joinSubmit:hover {
+  background: #2563eb;
+}
+
+#joinCancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+#joinCancel:hover {
+  background: #d1d5db;
+}
+
+.join-btn {
+  padding: 6px 12px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.join-btn:hover {
+  background: #7c3aed;
+}
+
+.sessions-list {
+  list-style: none;
+  padding: 0;
+}
+
+.sessions-list li {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sessions-list li strong {
+  color: #3b82f6;
+  font-family: monospace;
+}
+
+/* Index page specific styles */
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.page-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+}
+
+.subtitle {
+  margin: 0;
+  opacity: 0.95;
+  font-size: 16px;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.empty-state p:first-child {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.session-info {
+  flex: 1;
+}
+
+.session-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.session-meta {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-waiting {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-in-progress {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-ended {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.button-group button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.error-message {
+  margin-top: 12px;
+  padding: 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+  font-size: 14px;
+  border-left: 3px solid #ef4444;
+}
