@@ -16,7 +16,7 @@
       <section class="chat card" id="chat">
         <div id="messages" class="messages"></div>
 
-        <!-- Game controls (shown during game) -->
+            <!-- Game controls (shown during game) -->
         <div id="gameControls" class="controls guess-controls hidden">
           <div class="guess-info">
             <p id="questionDisplay"></p>
@@ -123,7 +123,7 @@
       let isGameMaster = false;
       let mySocketId = null;
 
-      // Utility: Add message to chat
+      // Add message to chat
       function addMessage(text, cls = 'system', playerName = '') {
         const div = document.createElement('div');
         div.className = `msg ${cls}`;
@@ -168,7 +168,7 @@
       // Update game controls based on state
       function updateGameControls(gameState, isMaster) {
         if (gameState === 'in-progress') {
-          // Master should NOT see guessing controls
+          // Master should not see guessing controls
           if (isMaster) {
             gameControls.classList.add('hidden');
             masterControls.style.display = 'none';
@@ -189,7 +189,7 @@
         }
       }
 
-      // ===== SOCKET EVENT HANDLERS =====
+      // SOCKET EVENT HANDLERS
 
       // Join session
       socket.emit('join_session', { sessionId, name }, (resp) => {
@@ -212,7 +212,7 @@
         addMessage('You joined the session as ' + (isGameMaster ? 'Master' : 'Player'));
       });
 
-      // GAME STATE - Main synchronization event
+      // GAME STATE
       socket.on('game-state', (data) => {
         console.log('Received game state:', data);
         
@@ -341,7 +341,7 @@
         }
       });
 
-      // ===== USER INTERACTIONS =====
+      // USER INTERACTIONS
 
       // Send chat message
       sendMessageBtn.addEventListener('click', sendChatMessage);
