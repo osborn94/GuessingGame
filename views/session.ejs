@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Session <%= sessionId %> — Guessing Game</title>
   <link rel="stylesheet" href="/public/style.css" />
 </head>
@@ -16,7 +17,7 @@
       <section class="chat card" id="chat">
         <div id="messages" class="messages"></div>
 
-            <!-- Game controls (shown during game) -->
+        <!-- Game controls (shown during game) -->
         <div id="gameControls" class="controls guess-controls hidden">
           <div class="guess-info">
             <p id="questionDisplay"></p>
@@ -75,6 +76,7 @@
 
     <footer class="muted">
       <button id="leaveBtn">Leave Session</button>
+      <small>Real-time multiplayer via Socket.IO.</small>
     </footer>
   </div>
 
@@ -123,7 +125,7 @@
       let isGameMaster = false;
       let mySocketId = null;
 
-      // Add message to chat
+      //  Add message to chat
       function addMessage(text, cls = 'system', playerName = '') {
         const div = document.createElement('div');
         div.className = `msg ${cls}`;
@@ -168,7 +170,7 @@
       // Update game controls based on state
       function updateGameControls(gameState, isMaster) {
         if (gameState === 'in-progress') {
-          // Master should not see guessing controls
+          // Master should NOT see guessing controls
           if (isMaster) {
             gameControls.classList.add('hidden');
             masterControls.style.display = 'none';
@@ -189,7 +191,7 @@
         }
       }
 
-      // SOCKET EVENT HANDLERS
+      //  SOCKET EVENT HANDLERS
 
       // Join session
       socket.emit('join_session', { sessionId, name }, (resp) => {
@@ -212,7 +214,7 @@
         addMessage('You joined the session as ' + (isGameMaster ? 'Master' : 'Player'));
       });
 
-      // GAME STATE
+      // GAME STATE - Main synchronization event
       socket.on('game-state', (data) => {
         console.log('Received game state:', data);
         
@@ -334,14 +336,14 @@
       socket.on('new_master', ({ masterName }) => {
         addMessage(`👑 New master: ${masterName}`, 'system');
         
-        // Update UI if you became master
+        // Update UI if you become master
         if (socket.id === masterName) {
           isGameMaster = true;
           masterControls.style.display = 'block';
         }
       });
 
-      // USER INTERACTIONS
+      //  USER INTERACTIONS
 
       // Send chat message
       sendMessageBtn.addEventListener('click', sendChatMessage);
