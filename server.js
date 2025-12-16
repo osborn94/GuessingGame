@@ -343,10 +343,12 @@ io.on('connection', (socket) => {
   function leaveSession(socket, sessionId) {
     const s = sessions.get(sessionId);
     if (!s) return;
+    // capture name before removing player
+    const playerName = s.players[socket.id]?.name;
     // remove from players
     delete s.players[socket.id];
     socket.leave(sessionId);
-    io.to(sessionId).emit('player_left', { socketId: socket.id });
+    io.to(sessionId).emit('player_left', { socketId: socket.id, name: playerName });
     // if leaving was master, rotate immediately
     if (s.masterSocketId === socket.id) {
       // clear timers

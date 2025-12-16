@@ -79,6 +79,21 @@
     </footer>
   </div>
 
+  <!-- Custom Modal -->
+  <div id="customModal" class="custom-modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span id="modalIcon" class="modal-icon"></span>
+        <h3 id="modalTitle" class="modal-title"></h3>
+      </div>
+      <p id="modalMessage" class="modal-message"></p>
+      <div id="modalButtons" class="modal-buttons"></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -87,6 +102,96 @@
 
       const sessionId = "<%= sessionId %>";
       const name = "<%= name %>";
+
+      // Custom Modal Functions
+      const customModal = document.getElementById('customModal');
+      const modalIcon = document.getElementById('modalIcon');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalMessage = document.getElementById('modalMessage');
+      const modalButtons = document.getElementById('modalButtons');
+
+      function showModal(title, message, type = 'info', buttons = []) {
+        const icons = {
+          error: '❌',
+          success: '✅',
+          warning: '⚠️',
+          info: 'ℹ️'
+        };
+
+        modalIcon.textContent = icons[type] || icons.info;
+        modalIcon.className = `modal-icon ${type}`;
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+
+        // Clear previous buttons
+        modalButtons.innerHTML = '';
+
+        // Add new buttons
+        buttons.forEach(btn => {
+          const button = document.createElement('button');
+          button.textContent = btn.text;
+          button.className = `modal-btn ${btn.className || 'modal-btn-primary'}`;
+          button.onclick = () => {
+            customModal.classList.add('hidden');
+            if (btn.onClick) btn.onClick();
+          };
+          modalButtons.appendChild(button);
+        });
+
+        // Show modal
+        customModal.classList.remove('hidden');
+      }
+
+      function showAlert(title, message, type = 'info') {
+        showModal(title, message, type, [
+          { text: 'OK', className: 'modal-btn-primary' }
+        ]);
+      }
+
+      function showConfirm(title, message, onConfirm, onCancel) {
+        showModal(title, message, 'warning', [
+          { 
+            text: 'Cancel', 
+            className: 'modal-btn-secondary',
+            onClick: onCancel
+          },
+          { 
+            text: 'Confirm', 
+            className: 'modal-btn-danger',
+            onClick: onConfirm
+          }
+        ]);
+      }
+
+      // Toast Notification System
+      const toastContainer = document.getElementById('toastContainer');
+      
+      function showToast(title, message, type = 'info', duration = 3000) {
+        const icons = {
+          success: '✅',
+          error: '❌',
+          warning: '⚠️',
+          info: 'ℹ️'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+          <div class="toast-icon">${icons[type]}</div>
+          <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            ${message ? `<div class="toast-message">${message}</div>` : ''}
+          </div>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Auto remove after duration
+        setTimeout(() => {
+          toast.style.animation = 'slideInRight 0.3s ease reverse';
+          setTimeout(() => toast.remove(), 300);
+        }, duration);
+      }
 
       // UI References
       const sessionDisplay = document.getElementById('sessionDisplay');
@@ -124,7 +229,7 @@
       let isGameMaster = false;
       let mySocketId = null;
 
-      //  Add message to chat
+      // Add message to chat
       function addMessage(text, cls = 'system', playerName = '') {
         const div = document.createElement('div');
         div.className = `msg ${cls}`;
@@ -190,12 +295,12 @@
         }
       }
 
-      //  SOCKET EVENT HANDLERS
+      // SOCKET EVENT HANDLERS
 
       // Join session
       socket.emit('join_session', { sessionId, name }, (resp) => {
         if (resp && resp.error) {
-          alert(resp.error);
+          showAlert('Unable to Join', resp.error, 'error');
           addMessage('Error: ' + resp.error, 'error');
           roleLabel.textContent = 'Unable to join';
           return;
@@ -254,21 +359,24 @@
       // Player joined
       socket.on('player_joined', ({ name }) => {
         addMessage(`${name} joined the session`, 'system');
+        showToast('Player Joined', `${name} has entered the game`, 'info', 2000);
       });
 
       // Player left
-      socket.on('player_left', () => {
-        addMessage('A player left the session', 'system');
+      socket.on('player_left', ({ name }) => {
+        addMessage(`${name} left the session`, 'system');
       });
 
       // Question created
       socket.on('question_created', ({ question, masterName }) => {
         addMessage(`Master ${masterName} set the question: "${question}"`, 'system');
+        showToast('Question Ready', 'Master has set a new question!', 'success', 2500);
       });
 
       // Game started
       socket.on('game_started', ({ timeLeft, question }) => {
         addMessage(`🎮 Game started! Time: ${timeLeft}s`, 'system');
+        showToast('Game Started!', `${timeLeft} seconds to guess`, 'success', 3000);
         questionDisplay.textContent = `Question: ${question}`;
         timerDisplay.textContent = `Time left: ${timeLeft}s`;
         
@@ -318,8 +426,10 @@
       socket.on('round_ended', ({ winner, answer, message }) => {
         if (winner) {
           addMessage(`🏆 ${message} Answer was: "${answer}"`, 'system');
+          showToast('Round Complete!', `${winner.name} won! Answer: ${answer}`, 'success', 4000);
         } else {
           addMessage(`⏱️ ${message} Answer was: "${answer}"`, 'system');
+          showToast('Round Ended', `No winner. Answer was: ${answer}`, 'warning', 4000);
         }
         
         // Reset guess controls for next round
@@ -334,15 +444,16 @@
       // New master
       socket.on('new_master', ({ masterName }) => {
         addMessage(`👑 New master: ${masterName}`, 'system');
+        showToast('New Master', `${masterName} is now the game master`, 'info', 3000);
         
-        // Update UI if you become master
+        // Update UI if you became master
         if (socket.id === masterName) {
           isGameMaster = true;
           masterControls.style.display = 'block';
         }
       });
 
-      //  USER INTERACTIONS
+      // ===== USER INTERACTIONS =====
 
       // Send chat message
       sendMessageBtn.addEventListener('click', sendChatMessage);
@@ -365,11 +476,18 @@
         const q = questionInput.value.trim();
         const a = answerInput.value.trim();
 
-        if (!q || !a) return alert('Question and answer required');
+        if (!q || !a) {
+          showAlert('Missing Information', 'Please enter both a question and an answer.', 'warning');
+          return;
+        }
 
         socket.emit('create_question', { sessionId, question: q, answer: a }, (r) => {
-          if (r && r.error) return alert(r.error);
+          if (r && r.error) {
+            showAlert('Error', r.error, 'error');
+            return;
+          }
 
+          showToast('Question Saved', 'Your question has been set successfully', 'success');
           addMessage('✅ Question saved successfully', 'success');
           questionInput.value = '';
           answerInput.value = '';
@@ -381,7 +499,9 @@
         const t = parseInt(timeInput.value, 10) || 60;
 
         socket.emit('start_game', { sessionId, timeLimit: t }, (r) => {
-          if (r && r.error) alert(r.error);
+          if (r && r.error) {
+            showAlert('Cannot Start Game', r.error, 'error');
+          }
         });
       });
 
@@ -405,11 +525,15 @@
 
       // Leave session
       leaveBtn.addEventListener('click', () => {
-        if (confirm('Are you sure you want to leave?')) {
-          socket.emit('leave_session', { sessionId }, () => {
-            window.location = '/';
-          });
-        }
+        showConfirm(
+          'Leave Session?',
+          'Are you sure you want to leave this game session?',
+          () => {
+            socket.emit('leave_session', { sessionId }, () => {
+              window.location = '/';
+            });
+          }
+        );
       });
 
       // Initial state

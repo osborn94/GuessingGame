@@ -72,6 +72,18 @@
       </div>
     </div>
 
+    <!-- Custom Modal -->
+    <div id="customModal" class="custom-modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span id="modalIcon" class="modal-icon"></span>
+          <h3 id="modalTitle" class="modal-title"></h3>
+        </div>
+        <p id="modalMessage" class="modal-message"></p>
+        <div id="modalButtons" class="modal-buttons"></div>
+      </div>
+    </div>
+
     <footer class="muted">
       <p>💡 <strong>How to play:</strong> The master creates a question, players guess the answer. First correct guess wins!</p>
       <small>This game uses in-memory sessions. Refreshing server clears all sessions.</small>
@@ -81,6 +93,51 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+
+    // Custom Modal Functions
+    const customModal = document.getElementById('customModal');
+    const modalIcon = document.getElementById('modalIcon');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalButtons = document.getElementById('modalButtons');
+
+    function showModal(title, message, type = 'info', buttons = []) {
+      const icons = {
+        error: '❌',
+        success: '✅',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+
+      modalIcon.textContent = icons[type] || icons.info;
+      modalIcon.className = `modal-icon ${type}`;
+      modalTitle.textContent = title;
+      modalMessage.textContent = message;
+
+      // Clear previous buttons
+      modalButtons.innerHTML = '';
+
+      // Add new buttons
+      buttons.forEach(btn => {
+        const button = document.createElement('button');
+        button.textContent = btn.text;
+        button.className = `modal-btn ${btn.className || 'modal-btn-primary'}`;
+        button.onclick = () => {
+          customModal.classList.add('hidden');
+          if (btn.onClick) btn.onClick();
+        };
+        modalButtons.appendChild(button);
+      });
+
+      // Show modal
+      customModal.classList.remove('hidden');
+    }
+
+    function showAlert(title, message, type = 'info') {
+      showModal(title, message, type, [
+        { text: 'OK', className: 'modal-btn-primary' }
+      ]);
+    }
 
     // Listen for session updates
     socket.on('sessions-list-update', (sessions) => {
@@ -124,7 +181,6 @@
     function openJoin(sessionId = '') {
       document.getElementById('joinBox').classList.remove('hidden');
       document.getElementById('joinSessionId').value = sessionId;
-      document.getElementById('joinError').classList.add('hidden');
       
       // Focus on name input
       document.getElementById('joinName').focus();
@@ -134,13 +190,6 @@
       document.getElementById('joinBox').classList.add('hidden');
       document.getElementById('joinName').value = '';
       document.getElementById('joinSessionId').value = '';
-      document.getElementById('joinError').classList.add('hidden');
-    }
-
-    function showError(message) {
-      const errorDiv = document.getElementById('joinError');
-      errorDiv.textContent = message;
-      errorDiv.classList.remove('hidden');
     }
 
     // Cancel button
@@ -159,12 +208,12 @@
       const sessionId = document.getElementById('joinSessionId').value.trim();
 
       if (!name) {
-        showError('Please enter your name');
+        showAlert('Missing Information', 'Please enter your name to join the session.', 'warning');
         return;
       }
 
       if (!sessionId) {
-        showError('Please enter a session ID');
+        showAlert('Missing Information', 'Please enter a session ID to join.', 'warning');
         return;
       }
 
@@ -174,14 +223,14 @@
         const data = await res.json();
 
         if (!data.exists) {
-          showError('❌ Session ID not found. Please check and try again.');
+          showAlert('Session Not Found', 'The session ID you entered does not exist. Please check and try again.', 'error');
           return;
         }
 
         // Session exists, redirect
         window.location.href = `/session/${sessionId}?name=${encodeURIComponent(name)}`;
       } catch (error) {
-        showError('⚠️ Error checking session. Please try again.');
+        showAlert('Connection Error', 'Unable to check session. Please check your connection and try again.', 'error');
         console.error('Error:', error);
       }
     });
@@ -198,6 +247,7 @@
         document.getElementById('joinSubmit').click();
       }
     });
+
 
   </script>
 </body>
